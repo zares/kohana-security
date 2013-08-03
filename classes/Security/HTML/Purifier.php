@@ -9,7 +9,7 @@
  * @copyright  (c) 2010 Woody Gilk
  * @license    BSD
  */
-abstract class HTML_Security extends Kohana_Security {
+abstract class Security_HTML_Purifier {
 
     /**
      * @var  HTMLPurifier  singleton instance of the HTML Purifier object
@@ -28,12 +28,12 @@ abstract class HTML_Security extends Kohana_Security {
      */
     public static function htmlpurifier()
     {
-        if ( ! Security::$htmlpurifier)
+        if ( ! static::$htmlpurifier)
         {
             // Create a new configuration object
             $config = HTMLPurifier_Config::createDefault();
 
-            if ( ! Kohana::$config->load('purifier.security.finalize'))
+            if ( ! Kohana::$config->load('security.purifier.finalize'))
             {
                 // Allow configuration to be modified
                 $config->autoFinalize = FALSE;
@@ -42,7 +42,7 @@ abstract class HTML_Security extends Kohana_Security {
             // Use the same character set as Kohana
             $config->set('Core.Encoding', Kohana::$charset);
 
-            if (is_array($settings = Kohana::$config->load('purifier.security.settings')))
+            if (is_array($settings = Kohana::$config->load('security.purifier.settings')))
             {
                 // Load the settings
                 $config->loadArray($settings);
@@ -52,10 +52,10 @@ abstract class HTML_Security extends Kohana_Security {
             $config = Security::configure($config);
 
             // Create the purifier instance
-            Security::$htmlpurifier = new HTMLPurifier($config);
+            static::$htmlpurifier = new HTMLPurifier($config);
         }
 
-        return Security::$htmlpurifier;
+        return static::$htmlpurifier;
     }
 
     /**
@@ -81,24 +81,31 @@ abstract class HTML_Security extends Kohana_Security {
      * @param   mixed   text to clean, or an array to clean recursively
      * @return  mixed
      */
-    public static function xss_clean($str)
+    public static function xss_clean($data = NULL)
     {
-        if (is_array($str))
+        if (empty($data))
         {
-            foreach ($str as $i => $s)
+            return NULL;
+        }
+
+        if (is_array($data))
+        {
+            $result = array();
+
+            foreach ($data AS $i => $s)
             {
                 // Recursively clean arrays
-                $str[$i] = Security::xss_clean($s);
+                $result[$i] = Security::xss_clean($s);
             }
 
-            return $str;
+            return $result;
         }
 
         // Load HTML Purifier
         $purifier = Security::htmlpurifier();
 
         // Clean the HTML and return it
-        return $purifier->purify($str);
+        return $purifier->purify($data);
     }
 
 }
